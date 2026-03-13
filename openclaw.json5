@@ -1,0 +1,239 @@
+// OpenClaw config — SEO AI Employee
+// All 6 specialized SEO agents + scheduling + tool policies
+{
+  agents: {
+    defaults: {
+      model: {
+        primary: "claude-sonnet-4-6",
+        fallbacks: ["claude-haiku-4-5-20251001"],
+      },
+      tools: {
+        profile: "full",
+        exec: {
+          security: "allowlist",
+          allowBins: [
+            "python3", "python", "node", "psql",
+            "curl", "jq", "playwright", "uv",
+          ],
+        },
+        fs: {
+          allow: ["~/.openclaw/workspace/seo/**"],
+        },
+      },
+    },
+    list: [
+      // ─────────────────────────────────────────────
+      // 1. SEO ANALYST
+      // ─────────────────────────────────────────────
+      {
+        id: "seo-analyst",
+        name: "SEO Analyst",
+        identity: {
+          name: "Aria",
+          emoji: "📊",
+          theme: "blue",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/seo-analyst",
+        skills: [
+          "seo-analyst",
+          "google-search-console",
+          "dataforseo",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.2,
+          maxTokens: 4096,
+        },
+        subagents: {
+          allowAgents: ["keyword-strategist", "seo-reporter"],
+        },
+      },
+
+      // ─────────────────────────────────────────────
+      // 2. KEYWORD STRATEGIST
+      // ─────────────────────────────────────────────
+      {
+        id: "keyword-strategist",
+        name: "Keyword Strategist",
+        identity: {
+          name: "Kai",
+          emoji: "🔍",
+          theme: "green",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/keyword-strategist",
+        skills: [
+          "keyword-strategist",
+          "dataforseo",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.3,
+          maxTokens: 8192,
+        },
+        subagents: {
+          allowAgents: ["seo-writer"],
+        },
+      },
+
+      // ─────────────────────────────────────────────
+      // 3. SEO WRITER
+      // ─────────────────────────────────────────────
+      {
+        id: "seo-writer",
+        name: "SEO Writer",
+        identity: {
+          name: "Nova",
+          emoji: "✍️",
+          theme: "purple",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/seo-writer",
+        skills: [
+          "seo-writer",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.7,
+          maxTokens: 16000,
+        },
+        subagents: {
+          allowAgents: ["seo-executor"],
+        },
+      },
+
+      // ─────────────────────────────────────────────
+      // 4. SEO EXECUTOR
+      // ─────────────────────────────────────────────
+      {
+        id: "seo-executor",
+        name: "SEO Executor",
+        identity: {
+          name: "Rex",
+          emoji: "⚡",
+          theme: "orange",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/seo-executor",
+        skills: [
+          "seo-executor",
+          "playwright-seo",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.1,
+          maxTokens: 4096,
+        },
+        tools: {
+          exec: {
+            security: "allowlist",
+            allowBins: [
+              "python3", "playwright", "curl", "psql",
+            ],
+          },
+        },
+      },
+
+      // ─────────────────────────────────────────────
+      // 5. SEO AUDITOR
+      // ─────────────────────────────────────────────
+      {
+        id: "seo-auditor",
+        name: "SEO Auditor",
+        identity: {
+          name: "Scout",
+          emoji: "🔬",
+          theme: "red",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/seo-auditor",
+        skills: [
+          "seo-auditor",
+          "playwright-seo",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.1,
+          maxTokens: 8192,
+        },
+      },
+
+      // ─────────────────────────────────────────────
+      // 6. SEO REPORTER
+      // ─────────────────────────────────────────────
+      {
+        id: "seo-reporter",
+        default: true,
+        name: "SEO Reporter",
+        identity: {
+          name: "Riley",
+          emoji: "📈",
+          theme: "teal",
+        },
+        workspace: "~/.openclaw/workspace/seo",
+        agentDir: "~/.openclaw/agents/seo-reporter",
+        skills: [
+          "seo-reporter",
+          "postgres-seo",
+        ],
+        params: {
+          temperature: 0.4,
+          maxTokens: 8192,
+        },
+        subagents: {
+          allowAgents: "*",
+        },
+      },
+    ],
+  },
+
+  // ─────────────────────────────────────────────
+  // SCHEDULED PIPELINES
+  // ─────────────────────────────────────────────
+  cron: {
+    enabled: true,
+    maxConcurrentRuns: 2,
+    sessionRetention: "14d",
+    retry: {
+      maxAttempts: 3,
+      backoffMs: 60000,
+    },
+    failureAlert: {
+      enabled: true,
+    },
+  },
+
+  // ─────────────────────────────────────────────
+  // ENVIRONMENT
+  // ─────────────────────────────────────────────
+  env: {
+    files: [".env"],
+  },
+
+  // ─────────────────────────────────────────────
+  // GATEWAY
+  // ─────────────────────────────────────────────
+  gateway: {
+    enabled: true,
+    port: 18789,
+    host: "127.0.0.1",
+  },
+
+  // ─────────────────────────────────────────────
+  // MEMORY — vector search across sessions
+  // ─────────────────────────────────────────────
+  memory: {
+    enabled: true,
+    model: "claude-haiku-4-5-20251001",
+    searchK: 10,
+  },
+
+  // ─────────────────────────────────────────────
+  // LOGGING
+  // ─────────────────────────────────────────────
+  logging: {
+    level: "info",
+    file: "~/.openclaw/logs/seo-agent.log",
+  },
+}
