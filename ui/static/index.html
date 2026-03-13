@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEO AI Employee</title>
+<style>
+/* ── Reset & Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2e3347;
+  --accent: #6366f1;
+  --accent2: #8b5cf6;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --text: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 15px; }
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 56px; flex-shrink: 0; }
+.topbar-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05em; }
+.topbar-brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.status-pill { font-size: 0.78em; padding: 4px 10px; border-radius: 20px; background: rgba(16,185,129,.15); color: var(--green); border: 1px solid rgba(16,185,129,.3); }
+
+.main { display: grid; grid-template-columns: 380px 1fr; overflow: hidden; }
+
+/* ── Left Panel ────────────────────────────────────────────────────────── */
+.left-panel { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.left-inner { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Hero Input Card ───────────────────────────────────────────────────── */
+.hero-card { background: linear-gradient(135deg, #1e1b4b, #1a1d3a); border: 1px solid #3730a3; border-radius: var(--radius); padding: 24px; }
+.hero-card h2 { font-size: 1.15em; font-weight: 700; margin-bottom: 6px; }
+.hero-card p { color: var(--text-dim); font-size: 0.85em; margin-bottom: 18px; line-height: 1.5; }
+.url-input-wrap { display: flex; flex-direction: column; gap: 10px; }
+.url-input { background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 0.95em; width: 100%; outline: none; transition: border-color .2s; }
+.url-input:focus { border-color: var(--accent); }
+.url-input::placeholder { color: var(--text-muted); }
+.run-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; border: none; border-radius: 8px; padding: 11px 20px; font-size: 0.95em; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity .2s, transform .1s; }
+.run-btn:hover:not(:disabled) { opacity: .9; }
+.run-btn:active:not(:disabled) { transform: scale(.98); }
+.run-btn:disabled { opacity: .5; cursor: not-allowed; }
+.run-btn .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+.run-btn.loading .spinner { display: block; }
+.run-btn.loading .btn-text { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Phases ────────────────────────────────────────────────────────────── */
+.phases-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.phases-card h3 { font-size: 0.8em; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+.phase-list { display: flex; flex-direction: column; gap: 2px; }
+.phase-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; transition: background .15s; }
+.phase-item.active { background: rgba(99,102,241,.12); }
+.phase-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8em; flex-shrink: 0; background: var(--border); color: var(--text-muted); transition: all .3s; }
+.phase-icon.running { background: rgba(99,102,241,.2); color: var(--accent); animation: spin .7s linear infinite; }
+.phase-icon.done { background: rgba(16,185,129,.15); color: var(--green); animation: none; }
+.phase-icon.error { background: rgba(239,68,68,.15); color: var(--red); animation: none; }
+.phase-icon.info { background: rgba(59,130,246,.15); color: var(--blue); animation: none; }
+.phase-label { flex: 1; font-size: 0.88em; }
+.phase-label strong { display: block; font-weight: 600; }
+.phase-label span { color: var(--text-muted); font-size: 0.82em; }
+.phase-time { font-size: 0.75em; color: var(--text-muted); }
+
+/* ── Metrics Mini ──────────────────────────────────────────────────────── */
+.metrics-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric-mini { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.metric-mini-val { font-size: 1.5em; font-weight: 800; }
+.metric-mini-label { font-size: 0.75em; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Past Runs ─────────────────────────────────────────────────────────── */
+.runs-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.runs-card h3 { font-size: 0.8em; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+.run-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: opacity .15s; }
+.run-item:last-child { border-bottom: none; }
+.run-item:hover { opacity: .8; }
+.run-item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.run-item-dot.done { background: var(--green); }
+.run-item-dot.running { background: var(--accent); animation: pulse 1s infinite; }
+.run-item-dot.error { background: var(--red); }
+.run-item-info { flex: 1; min-width: 0; }
+.run-item-url { font-size: 0.82em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.run-item-time { font-size: 0.75em; color: var(--text-muted); }
+.run-item-view { font-size: 0.75em; color: var(--accent); font-weight: 600; flex-shrink: 0; }
+.empty-state { text-align: center; color: var(--text-muted); font-size: 0.85em; padding: 16px 0; }
+
+/* ── Right Panel ───────────────────────────────────────────────────────── */
+.right-panel { display: flex; flex-direction: column; overflow: hidden; }
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.tab { padding: 14px 20px; font-size: 0.88em; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { flex: 1; overflow: hidden; display: none; }
+.tab-content.active { display: flex; flex-direction: column; }
+
+/* ── Live Feed ─────────────────────────────────────────────────────────── */
+.feed-wrap { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.feed-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); gap: 12px; }
+.feed-empty .big-icon { font-size: 3em; opacity: .3; }
+.feed-empty p { font-size: 0.88em; }
+
+.feed-event { display: flex; gap: 12px; padding: 10px 14px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.feed-event.status-done { border-left: 3px solid var(--green); }
+.feed-event.status-running { border-left: 3px solid var(--accent); }
+.feed-event.status-error { border-left: 3px solid var(--red); }
+.feed-event.status-info { border-left: 3px solid var(--blue); }
+.feed-event-icon { font-size: 1em; margin-top: 1px; flex-shrink: 0; }
+.feed-event-body { flex: 1; min-width: 0; }
+.feed-event-msg { font-size: 0.88em; line-height: 1.5; }
+.feed-event-phase { font-size: 0.72em; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.feed-event-data { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+.data-chip { background: rgba(255,255,255,.06); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; font-size: 0.75em; color: var(--text-dim); }
+.feed-event-time { font-size: 0.72em; color: var(--text-muted); flex-shrink: 0; margin-top: 2px; }
+
+/* ── Stream Block ──────────────────────────────────────────────────────── */
+.stream-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; font-size: 0.85em; line-height: 1.7; color: var(--text-dim); white-space: pre-wrap; animation: fadeIn .3s ease; border-left: 3px solid var(--accent2); }
+.stream-block .stream-label { font-size: 0.75em; color: var(--accent2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+
+/* ── Complete Banner ───────────────────────────────────────────────────── */
+.complete-banner { background: linear-gradient(135deg, rgba(16,185,129,.1), rgba(16,185,129,.05)); border: 1px solid rgba(16,185,129,.3); border-radius: var(--radius); padding: 20px 24px; margin: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; animation: fadeIn .4s ease; }
+.complete-banner h3 { font-size: 1em; font-weight: 700; color: var(--green); }
+.complete-banner p { font-size: 0.85em; color: var(--text-muted); margin-top: 2px; }
+.view-report-btn { background: var(--green); color: #0f1117; border: none; border-radius: 8px; padding: 9px 18px; font-size: 0.88em; font-weight: 700; cursor: pointer; flex-shrink: 0; transition: opacity .2s; }
+.view-report-btn:hover { opacity: .85; }
+
+/* ── Report Panel ──────────────────────────────────────────────────────── */
+.report-wrap { flex: 1; overflow: hidden; }
+.report-wrap iframe { width: 100%; height: 100%; border: none; }
+.report-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); gap: 12px; }
+.report-placeholder .big-icon { font-size: 3em; opacity: .3; }
+.report-placeholder p { font-size: 0.88em; }
+
+/* ── Metrics Panel ─────────────────────────────────────────────────────── */
+.metrics-wrap { flex: 1; overflow-y: auto; padding: 24px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.metric-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.metric-card-val { font-size: 2.2em; font-weight: 800; }
+.metric-card-label { font-size: 0.8em; color: var(--text-muted); margin-top: 4px; }
+.metric-card-sub { font-size: 0.78em; color: var(--text-dim); margin-top: 6px; }
+.section-title { font-size: 0.8em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3e4460; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="dot"></div>
+      SEO AI Employee
+    </div>
+    <div class="topbar-right">
+      <span class="status-pill" id="daemon-status">OpenClaw Running</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="left-inner">
+
+        <!-- Hero Input -->
+        <div class="hero-card">
+          <h2>Run SEO Analysis</h2>
+          <p>Enter any website URL. The agents will research, write, fix, and report — autonomously.</p>
+          <div class="url-input-wrap">
+            <input class="url-input" id="url-input" type="url"
+              placeholder="https://yoursite.com" autocomplete="off" spellcheck="false" />
+            <button class="run-btn" id="run-btn" onclick="startRun()">
+              <div class="spinner"></div>
+              <span class="btn-text">▶ Run Full SEO Analysis</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Phase Tracker -->
+        <div class="phases-card" id="phases-card" style="display:none">
+          <h3>Agent Progress</h3>
+          <div class="phase-list" id="phase-list">
+            <div class="phase-item" data-phase="discovery">
+              <div class="phase-icon" id="icon-discovery">⊙</div>
+              <div class="phase-label"><strong>Site Discovery</strong><span>CWV + health check</span></div>
+              <div class="phase-time" id="time-discovery"></div>
+            </div>
+            <div class="phase-item" data-phase="audit">
+              <div class="phase-icon" id="icon-audit">⊙</div>
+              <div class="phase-label"><strong>Technical Audit</strong><span>Crawl + issues</span></div>
+              <div class="phase-time" id="time-audit"></div>
+            </div>
+            <div class="phase-item" data-phase="gsc">
+              <div class="phase-icon" id="icon-gsc">⊙</div>
+              <div class="phase-label"><strong>GSC Analysis</strong><span>Rankings + CTR</span></div>
+              <div class="phase-time" id="time-gsc"></div>
+            </div>
+            <div class="phase-item" data-phase="keywords">
+              <div class="phase-icon" id="icon-keywords">⊙</div>
+              <div class="phase-label"><strong>Keyword Research</strong><span>Gaps + clusters</span></div>
+              <div class="phase-time" id="time-keywords"></div>
+            </div>
+            <div class="phase-item" data-phase="writing">
+              <div class="phase-icon" id="icon-writing">⊙</div>
+              <div class="phase-label"><strong>AI Strategy</strong><span>Claude writing plan</span></div>
+              <div class="phase-time" id="time-writing"></div>
+            </div>
+            <div class="phase-item" data-phase="report">
+              <div class="phase-icon" id="icon-report">⊙</div>
+              <div class="phase-label"><strong>Report</strong><span>Generate HTML</span></div>
+              <div class="phase-time" id="time-report"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Metrics -->
+        <div id="metrics-mini-wrap" style="display:none">
+          <div class="metrics-mini" id="metrics-mini"></div>
+        </div>
+
+        <!-- Past Runs -->
+        <div class="runs-card">
+          <h3>Past Runs</h3>
+          <div id="runs-list"><div class="empty-state">No runs yet</div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('feed')">Live Feed</div>
+        <div class="tab" onclick="switchTab('report')">Report</div>
+        <div class="tab" onclick="switchTab('metrics')">Metrics</div>
+      </div>
+
+      <!-- Live Feed Tab -->
+      <div class="tab-content active" id="tab-feed">
+        <div class="feed-wrap" id="feed-wrap">
+          <div class="feed-empty" id="feed-empty">
+            <div class="big-icon">🤖</div>
+            <p>Enter a URL and click Run to see live agent activity</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report Tab -->
+      <div class="tab-content" id="tab-report">
+        <div class="report-placeholder" id="report-placeholder">
+          <div class="big-icon">📈</div>
+          <p>Report will appear here when the run completes</p>
+        </div>
+        <div class="report-wrap" id="report-wrap" style="display:none">
+          <iframe id="report-iframe" src="about:blank"></iframe>
+        </div>
+      </div>
+
+      <!-- Metrics Tab -->
+      <div class="tab-content" id="tab-metrics">
+        <div class="metrics-wrap">
+          <div id="metrics-content">
+            <div class="feed-empty">
+              <div class="big-icon">📊</div>
+              <p>Metrics will appear after a run completes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let currentRunId = null;
+let ws = null;
+let streamBuffer = '';
+let streamEl = null;
+let phaseStartTimes = {};
+let metricsData = {};
+let activeTab = 'feed';
+
+// ── Phase config ──────────────────────────────────────────────────────────
+const PHASE_ICONS = {
+  running: '↻',
+  done: '✓',
+  error: '✕',
+  info: 'ℹ',
+  idle: '⊙',
+};
+const PHASE_LABELS = {
+  discovery: 'Site Discovery',
+  audit: 'Technical Audit',
+  gsc: 'GSC Analysis',
+  keywords: 'Keyword Research',
+  writing: 'AI Strategy',
+  report: 'Report',
+};
+
+// ── Start Run ─────────────────────────────────────────────────────────────
+async function startRun() {
+  const urlInput = document.getElementById('url-input');
+  let url = urlInput.value.trim();
+  if (!url) { urlInput.focus(); return; }
+  if (!url.startsWith('http')) url = 'https://' + url;
+
+  // Reset UI
+  resetUI();
+  setBtnLoading(true);
+  document.getElementById('phases-card').style.display = 'block';
+  document.getElementById('feed-empty').style.display = 'none';
+  showTab('feed');
+
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    currentRunId = data.run_id;
+    connectWS(currentRunId);
+    refreshRunsList();
+  } catch (e) {
+    setBtnLoading(false);
+    addFeedEvent({ phase: 'system', status: 'error', message: 'Failed to start: ' + e.message });
+  }
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────
+function connectWS(runId) {
+  if (ws) ws.close();
+  ws = new WebSocket(`ws://${location.host}/ws/${runId}`);
+
+  ws.onmessage = (e) => {
+    const event = JSON.parse(e.data);
+    handleEvent(event);
+  };
+
+  ws.onclose = () => {
+    // Reconnect once if not done
+    if (currentRunId === runId) {
+      setTimeout(() => {
+        if (currentRunId === runId) connectWS(runId);
+      }, 2000);
+    }
+  };
+}
+
+function handleEvent(event) {
+  if (event.type === 'progress') {
+    updatePhase(event.phase, event.status, event.message);
+    addFeedEvent(event);
+    if (event.data && Object.keys(event.data).length > 0) {
+      updateMetrics(event.phase, event.data);
+    }
+  } else if (event.type === 'stream') {
+    handleStream(event.text);
+  } else if (event.type === 'complete') {
+    onRunComplete(event.run_id);
+  } else if (event.type === 'error') {
+    setBtnLoading(false);
+    addFeedEvent({ phase: 'system', status: 'error', message: event.message });
+  }
+}
+
+// ── Phase Tracker ─────────────────────────────────────────────────────────
+function updatePhase(phase, status, message) {
+  const icon = document.getElementById(`icon-${phase}`);
+  const timeEl = document.getElementById(`time-${phase}`);
+  const item = document.querySelector(`[data-phase="${phase}"]`);
+  if (!icon) return;
+
+  if (status === 'running' && !phaseStartTimes[phase]) {
+    phaseStartTimes[phase] = Date.now();
+  }
+
+  icon.className = `phase-icon ${status}`;
+  icon.textContent = PHASE_ICONS[status] || '⊙';
+
+  if (item) {
+    item.classList.toggle('active', status === 'running');
+  }
+
+  if (status === 'done' && phaseStartTimes[phase] && timeEl) {
+    const elapsed = ((Date.now() - phaseStartTimes[phase]) / 1000).toFixed(1);
+    timeEl.textContent = `${elapsed}s`;
+  }
+}
+
+// ── Feed Events ───────────────────────────────────────────────────────────
+function addFeedEvent(event) {
+  const wrap = document.getElementById('feed-wrap');
+  const statusIcons = { done: '✓', running: '⋯', error: '✕', info: 'ℹ' };
+
+  const el = document.createElement('div');
+  el.className = `feed-event status-${event.status}`;
+
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const phaseLabel = PHASE_LABELS[event.phase] || event.phase;
+
+  let dataChips = '';
+  if (event.data) {
+    const chips = Object.entries(event.data)
+      .filter(([k, v]) => v !== null && v !== undefined && k !== 'stderr')
+      .slice(0, 6)
+      .map(([k, v]) => `<span class="data-chip">${formatKey(k)}: ${v}</span>`)
+      .join('');
+    if (chips) dataChips = `<div class="feed-event-data">${chips}</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="feed-event-icon">${statusIcons[event.status] || '·'}</div>
+    <div class="feed-event-body">
+      <div class="feed-event-phase">${phaseLabel}</div>
+      <div class="feed-event-msg">${event.message}</div>
+      ${dataChips}
+    </div>
+    <div class="feed-event-time">${time}</div>
+  `;
+
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function formatKey(k) {
+  return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── Streaming ─────────────────────────────────────────────────────────────
+function handleStream(text) {
+  if (!streamEl) {
+    const wrap = document.getElementById('feed-wrap');
+    streamEl = document.createElement('div');
+    streamEl.className = 'stream-block';
+    streamEl.innerHTML = '<div class="stream-label">Claude — SEO Strategy</div><div class="stream-text"></div>';
+    wrap.appendChild(streamEl);
+  }
+  streamBuffer += text;
+  streamEl.querySelector('.stream-text').textContent = streamBuffer;
+  const wrap = document.getElementById('feed-wrap');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ── Metrics ───────────────────────────────────────────────────────────────
+function updateMetrics(phase, data) {
+  metricsData[phase] = data;
+  renderMetricsMini();
+  renderMetricsPanel();
+}
+
+function renderMetricsMini() {
+  const wrap = document.getElementById('metrics-mini-wrap');
+  const container = document.getElementById('metrics-mini');
+  const highlights = [];
+
+  if (metricsData.audit) {
+    highlights.push({ val: metricsData.audit.broken_links ?? 0, label: 'Broken Links', color: 'var(--red)' });
+    highlights.push({ val: metricsData.audit.total_issues ?? 0, label: 'Total Issues', color: 'var(--yellow)' });
+  }
+  if (metricsData.gsc) {
+    highlights.push({ val: metricsData.gsc.total_clicks ?? 0, label: 'GSC Clicks', color: 'var(--green)' });
+    highlights.push({ val: metricsData.gsc.quick_wins ?? 0, label: 'Quick Wins', color: 'var(--accent)' });
+  }
+  if (metricsData.keywords) {
+    highlights.push({ val: metricsData.keywords.clusters ?? 0, label: 'KW Clusters', color: 'var(--blue)' });
+  }
+
+  if (highlights.length === 0) return;
+  wrap.style.display = 'block';
+  container.innerHTML = highlights.slice(0, 4).map(h => `
+    <div class="metric-mini">
+      <div class="metric-mini-val" style="color:${h.color}">${h.val}</div>
+      <div class="metric-mini-label">${h.label}</div>
+    </div>
+  `).join('');
+}
+
+function renderMetricsPanel() {
+  const container = document.getElementById('metrics-content');
+  let html = '';
+
+  if (metricsData.discovery && metricsData.discovery.lcp_ms) {
+    const d = metricsData.discovery;
+    const lcp = d.lcp_ms;
+    const lcpColor = lcp <= 2500 ? 'var(--green)' : lcp <= 4000 ? 'var(--yellow)' : 'var(--red)';
+    html += `
+      <p class="section-title">Core Web Vitals</p>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-card-val" style="color:${lcpColor}">${lcp}ms</div><div class="metric-card-label">LCP</div></div>
+        <div class="metric-card"><div class="metric-card-val">${d.cls ?? '—'}</div><div class="metric-card-label">CLS</div></div>
+        <div class="metric-card"><div class="metric-card-val">${d.ttfb_ms ?? '—'}ms</div><div class="metric-card-label">TTFB</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:${d.passes_cwv ? 'var(--green)' : 'var(--red)'}">${d.passes_cwv ? 'PASS' : 'FAIL'}</div><div class="metric-card-label">CWV Status</div></div>
+      </div>
+    `;
+  }
+
+  if (metricsData.audit) {
+    const a = metricsData.audit;
+    html += `
+      <p class="section-title" style="margin-top:24px">Technical Audit</p>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-card-val">${a.pages_crawled ?? '—'}</div><div class="metric-card-label">Pages Crawled</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--red)">${a.broken_links ?? 0}</div><div class="metric-card-label">Broken Links</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--yellow)">${a.missing_meta_title ?? 0}</div><div class="metric-card-label">Missing Meta Title</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--yellow)">${a.missing_meta_description ?? 0}</div><div class="metric-card-label">Missing Meta Desc</div></div>
+        <div class="metric-card"><div class="metric-card-val">${a.missing_alt_text ?? 0}</div><div class="metric-card-label">Missing Alt Text</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--red)">${a.total_issues ?? 0}</div><div class="metric-card-label">Total Issues</div></div>
+      </div>
+    `;
+  }
+
+  if (metricsData.gsc) {
+    const g = metricsData.gsc;
+    html += `
+      <p class="section-title" style="margin-top:24px">GSC Performance (28 days)</p>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--green)">${g.total_clicks ?? '—'}</div><div class="metric-card-label">Total Clicks</div></div>
+        <div class="metric-card"><div class="metric-card-val">${g.total_impressions ?? '—'}</div><div class="metric-card-label">Impressions</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--red)">${g.ranking_drops ?? 0}</div><div class="metric-card-label">Ranking Drops</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--green)">${g.quick_wins ?? 0}</div><div class="metric-card-label">Quick Wins</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--yellow)">${g.ctr_opportunities ?? 0}</div><div class="metric-card-label">CTR Opportunities</div></div>
+      </div>
+    `;
+  }
+
+  if (metricsData.keywords) {
+    const k = metricsData.keywords;
+    html += `
+      <p class="section-title" style="margin-top:24px">Keyword Research</p>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-card-val">${k.total_keywords ?? '—'}</div><div class="metric-card-label">Keywords Analyzed</div></div>
+        <div class="metric-card"><div class="metric-card-val" style="color:var(--accent)">${k.clusters ?? '—'}</div><div class="metric-card-label">Clusters Found</div></div>
+        <div class="metric-card" style="grid-column:span 2"><div class="metric-card-val" style="font-size:1.1em">${k.top_keyword ?? '—'}</div><div class="metric-card-label">Top Keyword</div><div class="metric-card-sub">${k.top_volume ?? 0} searches/mo</div></div>
+      </div>
+    `;
+  }
+
+  if (!html) {
+    html = `<div class="feed-empty"><div class="big-icon">📊</div><p>Metrics will appear as agents run</p></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ── Run Complete ──────────────────────────────────────────────────────────
+function onRunComplete(runId) {
+  setBtnLoading(false);
+  currentRunId = null;
+
+  // Show complete banner in feed
+  const wrap = document.getElementById('feed-wrap');
+  const banner = document.createElement('div');
+  banner.className = 'complete-banner';
+  banner.innerHTML = `
+    <div>
+      <h3>✓ Analysis Complete</h3>
+      <p>All agents finished. Full report is ready.</p>
+    </div>
+    <button class="view-report-btn" onclick="loadReport('${runId}')">View Report →</button>
+  `;
+  wrap.appendChild(banner);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  // Load report in background
+  loadReport(runId);
+  refreshRunsList();
+}
+
+function loadReport(runId) {
+  document.getElementById('report-placeholder').style.display = 'none';
+  document.getElementById('report-wrap').style.display = 'flex';
+  document.getElementById('report-iframe').src = `/api/report/${runId}`;
+  switchTab('report');
+}
+
+// ── Past Runs ─────────────────────────────────────────────────────────────
+async function refreshRunsList() {
+  const res = await fetch('/api/runs');
+  const runs = await res.json();
+  const list = document.getElementById('runs-list');
+
+  if (!runs.length) {
+    list.innerHTML = '<div class="empty-state">No runs yet</div>';
+    return;
+  }
+
+  list.innerHTML = runs.slice(0, 8).map(r => {
+    const url = r.site_url.replace(/^https?:\/\//, '');
+    const time = new Date(r.started_at).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return `
+      <div class="run-item" onclick="viewRun('${r.run_id}')">
+        <div class="run-item-dot ${r.status}"></div>
+        <div class="run-item-info">
+          <div class="run-item-url">${url}</div>
+          <div class="run-item-time">${time}</div>
+        </div>
+        ${r.status === 'done' ? '<div class="run-item-view">View →</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function viewRun(runId) {
+  loadReport(runId);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  showTab(name);
+}
+
+function showTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['feed', 'report', 'metrics'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function setBtnLoading(loading) {
+  const btn = document.getElementById('run-btn');
+  btn.classList.toggle('loading', loading);
+  btn.disabled = loading;
+}
+
+function resetUI() {
+  // Clear feed
+  const feed = document.getElementById('feed-wrap');
+  feed.innerHTML = '<div class="feed-empty" id="feed-empty" style="display:none"></div>';
+  streamEl = null;
+  streamBuffer = '';
+  phaseStartTimes = {};
+  metricsData = {};
+
+  // Reset phases
+  ['discovery','audit','gsc','keywords','writing','report'].forEach(p => {
+    const icon = document.getElementById(`icon-${p}`);
+    const timeEl = document.getElementById(`time-${p}`);
+    if (icon) { icon.className = 'phase-icon'; icon.textContent = '⊙'; }
+    if (timeEl) timeEl.textContent = '';
+    const item = document.querySelector(`[data-phase="${p}"]`);
+    if (item) item.classList.remove('active');
+  });
+
+  // Reset report
+  document.getElementById('report-placeholder').style.display = 'flex';
+  document.getElementById('report-wrap').style.display = 'none';
+  document.getElementById('report-iframe').src = 'about:blank';
+
+  // Reset metrics
+  document.getElementById('metrics-mini-wrap').style.display = 'none';
+  document.getElementById('metrics-mini').innerHTML = '';
+  document.getElementById('metrics-content').innerHTML = `
+    <div class="feed-empty"><div class="big-icon">📊</div><p>Metrics will appear after a run completes</p></div>
+  `;
+}
+
+// ── Enter key on input ────────────────────────────────────────────────────
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startRun();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+refreshRunsList();
+setInterval(refreshRunsList, 10000);
+</script>
+</body>
+</html>
